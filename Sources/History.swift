@@ -237,7 +237,7 @@ final class History {
         switch s.agent {
         case .claude: r.offset = readClaude(s.path, into: &r)
         case .codex: r.offset = readCodex(s.path, into: &r)
-        case .cursor: break
+        case .cursor, .hermes, .opencode: break
         }
         r.size = s.size
         r.mtime = s.mtime.timeIntervalSince1970

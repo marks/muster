@@ -1,21 +1,28 @@
 import AppKit
 
 enum Agent: String, CaseIterable {
-    case claude, codex, cursor
+    case claude, codex, cursor, hermes, opencode
 
     var name: String {
         switch self {
         case .claude: return "Claude"
         case .codex: return "Codex"
         case .cursor: return "Cursor"
+        case .hermes: return "Hermes"
+        case .opencode: return "OpenCode"
         }
     }
+
+    /// Read from a server you add in Settings, not from files on this Mac.
+    var isRemote: Bool { self == .hermes || self == .opencode }
 
     var colour: NSColor {
         switch self {
         case .claude: return NSColor(srgbRed: 0.93, green: 0.55, blue: 0.20, alpha: 1)
         case .codex: return NSColor(srgbRed: 0.27, green: 0.52, blue: 0.98, alpha: 1)
         case .cursor: return NSColor(srgbRed: 0.62, green: 0.40, blue: 0.98, alpha: 1)
+        case .hermes: return NSColor(srgbRed: 0.83, green: 0.66, blue: 0.16, alpha: 1)
+        case .opencode: return NSColor(srgbRed: 0.18, green: 0.70, blue: 0.56, alpha: 1)
         }
     }
 
@@ -24,6 +31,8 @@ enum Agent: String, CaseIterable {
         case .claude: return ["com.anthropic.claudefordesktop"]
         case .codex: return ["com.openai.codex", "com.openai.chat"]
         case .cursor: return ["com.todesktop.230313mzl4w4u92"]
+        case .hermes: return ["com.nousresearch.hermes", "com.nousresearch.hermes-bundled"]
+        case .opencode: return Remote.openCodeBundleIDs
         }
     }
 
@@ -166,12 +175,14 @@ struct Usage: Equatable {
 /// What a reader found on the last scan, for the Sources list in Settings.
 enum SourceState: Equatable {
     case notInstalled
+    case noServer            // a remote agent with no server added in Settings
     case ok(Int)
     case unreadable(String)
 
     var summary: String {
         switch self {
         case .notInstalled: return "Not found on this Mac"
+        case .noServer: return "No server added"
         case .ok(0): return "Installed, nothing in the last 3 hours"
         case .ok(let n): return "\(n) session\(n == 1 ? "" : "s") in the last 3 hours"
         case .unreadable(let why): return why

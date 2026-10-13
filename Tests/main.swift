@@ -816,6 +816,8 @@ check(missingSymbols.isEmpty, "every symbol in CHANGELOG.md exists" + (missingSy
 let building = (NSDictionary(contentsOf: repo.appendingPathComponent("Resources/Info.plist")) as? [String: Any])?["CFBundleShortVersionString"] as? String ?? "?"
 check(shipped.contains { Changelog.same($0.version, building) }, "the version being built (\(building)) has a CHANGELOG.md entry")
 
+remoteTests()
+
 try? fm.removeItem(atPath: root)
 print(failures == 0 ? "\nAll tests passed." : "\n\(failures) failed.")
 exit(failures == 0 ? 0 : 1)

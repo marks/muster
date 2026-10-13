@@ -242,7 +242,7 @@ struct Hooks {
                     ("PreToolUse", ["matcher": "AskUserQuestion|ExitPlanMode", "hooks": [handler(for: "PreToolUse")!]])]
         case .codex:
             return [("PermissionRequest", ["hooks": [handler(for: "PermissionRequest")!]])]
-        case .cursor:
+        case .cursor, .hermes, .opencode:
             return []
         }
     }

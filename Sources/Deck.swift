@@ -8,7 +8,7 @@ final class Deck: NSObject, NSTextFieldDelegate, NSWindowDelegate {
 
     private let panel = DeckPanel(cornerRadius: 26, canBecomeKey: true)
     private let search = NSTextField()
-    private let filter = NSSegmentedControl(labels: ["All", "Claude", "Codex", "Cursor"], trackingMode: .selectOne,
+    private let filter = NSSegmentedControl(labels: ["All"] + Agent.allCases.map(\.name), trackingMode: .selectOne,
                                             target: nil, action: nil)
     private let scroll = NSScrollView()
     private let list = SessionList(frame: .zero)
@@ -176,7 +176,7 @@ final class Deck: NSObject, NSTextFieldDelegate, NSWindowDelegate {
             panel.invalidateShadow()
         }
         search.frame = NSRect(x: 24, y: 22, width: size.width - 48, height: 28)
-        filter.frame = NSRect(x: 22, y: 60, width: 300, height: 24)
+        filter.frame = NSRect(x: 22, y: 60, width: 440, height: 24)
         scroll.frame = NSRect(x: 0, y: top, width: size.width, height: listHeight)
         list.frame = NSRect(x: 0, y: 0, width: size.width, height: max(listHeight, SessionList.height(for: shown)))
         emptyIcon.frame = NSRect(x: (size.width - 40) / 2, y: top + 22, width: 40, height: 40)

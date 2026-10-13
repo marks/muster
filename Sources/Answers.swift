@@ -41,6 +41,7 @@ struct Prompt {
             case "Bash": return "Wants to run"
             case "Write", "Edit", "MultiEdit": return "Wants to edit"
             case "WebFetch": return "Wants to fetch"
+            case "Read": return "Wants to read"
             default: return "Wants to use \(tool)"
             }
         case .question(let text, _): return text
@@ -75,6 +76,10 @@ final class Prompts {
 
     private(set) var pending: [UUID: Prompt] = [:]
     private var replies: [UUID: (Data) -> Void] = [:]
+    /// Prompts that wait on a server rather than on a hook, answered through its client.
+    private var remote: [UUID: RemotePrompt] = [:]
+    /// Server prompts just answered, kept off screen while the server catches up.
+    private var answered: [String: Date] = [:]
     private var raw: [UUID: [String: Any]] = [:]
     private let server = HookServer(ports: Prompts.ports)
     var onChange: (() -> Void)?
@@ -143,6 +148,21 @@ final class Prompts {
             Store.shared.refreshPrompts()
             return
         }
+        if let r = remote[p.id] {
+            let reply: RemoteReply
+            switch a {
+            case .allow: reply = .allow
+            case .alwaysAllow: reply = .allowAlways
+            case .deny: reply = .deny
+            case .option(let i): reply = .option(i)
+            }
+            answered[Self.key(r)] = Date()
+            Remote.shared.answer(r, reply)
+            drop(p.id)
+            Stats.record(.answered)
+            Store.shared.refreshPrompts()
+            return
+        }
         guard let reply = replies[p.id], let input = raw[p.id] else { return }
         var out: [String: Any]?
         switch (p.kind, a) {
@@ -180,8 +200,10 @@ final class Prompts {
         return ["hookSpecificOutput": ["hookEventName": "PermissionRequest", "decision": d]]
     }
 
-    /// Step aside without deciding; the agent's own prompt takes over.
+    /// Step aside without deciding; the agent's own prompt takes over. A server's prompt
+    /// stays until the server says it was answered or withdrawn.
     func release(_ id: UUID) {
+        guard remote[id] == nil else { return }
         replies[id]?(Data())
         drop(id)
     }
@@ -213,7 +235,42 @@ final class Prompts {
         Store.shared.refreshPrompts()
     }
 
+    /// Takes in what the servers wait on: new prompts appear, and ones answered or
+    /// withdrawn anywhere go.
+    func sync(remote found: [RemotePrompt]) {
+        let now = Date()
+        answered = answered.filter { now.timeIntervalSince($0.value) < 10 }
+        let live = found.filter { answered[Self.key($0)] == nil }
+        let keys = Set(live.map(Self.key))
+        var changed = false
+        for (id, r) in remote where !keys.contains(Self.key(r)) {
+            pending[id] = nil
+            remote[id] = nil
+            changed = true
+        }
+        let have = Set(remote.values.map(Self.key))
+        for r in live where !have.contains(Self.key(r)) {
+            let kind: Prompt.Kind
+            var context = Prompt.Context(reason: r.reason, body: r.body, code: r.code)
+            switch r.kind {
+            case .permission(let tool, let summary, let always):
+                kind = .permission(tool: tool, summary: summary, canAlwaysAllow: always)
+            case .question(let text, let options):
+                kind = .question(text: text, options: options)
+                context.choices = options.enumerated().map { (label: $0.element, note: r.notes.indices.contains($0.offset) ? r.notes[$0.offset] : "") }
+            }
+            let p = Prompt(agent: r.agent, sessionID: r.sessionID, project: r.project, kind: kind, blocksNative: false, context: context)
+            pending[p.id] = p
+            remote[p.id] = r
+            changed = true
+        }
+        if changed { onChange?() }
+    }
+
+    private static func key(_ r: RemotePrompt) -> String { r.agent.rawValue + "|" + r.key }
+
     private func drop(_ id: UUID) {
+        remote[id] = nil
         pending[id] = nil
         replies[id] = nil
         raw[id] = nil
@@ -313,7 +370,7 @@ enum HookInstaller {
         switch agent {
         case .claude: return Hooks(agent: .claude, path: claudeSettings, port: Prompts.port, token: Prompts.shared.token)
         case .codex: return Hooks(agent: .codex, path: codexHooks, port: Prompts.port, token: Prompts.shared.token)
-        case .cursor: return nil
+        case .cursor, .hermes, .opencode: return nil
         }
     }
 

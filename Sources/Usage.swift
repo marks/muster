@@ -241,7 +241,7 @@ private extension Agent {
         switch self {
         case .claude: return Color(red: 0xEE / 255, green: 0x8C / 255, blue: 0x33 / 255)
         case .codex: return Color(red: 0x45 / 255, green: 0x85 / 255, blue: 0xFA / 255)
-        case .cursor: return Color(nsColor: colour)
+        case .cursor, .hermes, .opencode: return Color(nsColor: colour)
         }
     }
 }
