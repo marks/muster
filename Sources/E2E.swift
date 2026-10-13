@@ -367,6 +367,7 @@ enum E2E {
         for (agent, s) in Store.shared.sources {
             switch s {
             case .notInstalled: sources[agent.rawValue] = "notInstalled"
+            case .noServer: sources[agent.rawValue] = "noServer"
             case .ok(let n): sources[agent.rawValue] = "ok:\(n)"
             case .unreadable: sources[agent.rawValue] = "unreadable"
             }

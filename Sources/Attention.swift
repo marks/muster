@@ -215,7 +215,8 @@ final class Attention {
     /// Whether Muster can answer this agent's prompts. Cursor never; Claude Code and Codex once
     /// their hook is on. Read from their settings at most every few seconds.
     private func answering(_ agent: Agent) -> Bool {
-        guard agent != .cursor else { return true }   // nothing to turn on, so nothing to offer
+        // Nothing to turn on for these: Cursor never, and a server's prompts come once it's added.
+        guard agent != .cursor, !agent.isRemote else { return true }
         if let (at, on) = answeringChecked[agent], Date().timeIntervalSince(at) < 5 { return on }
         let on = HookInstaller.isInstalled(agent)
         answeringChecked[agent] = (Date(), on)

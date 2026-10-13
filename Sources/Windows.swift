@@ -105,6 +105,18 @@ private struct SettingsView: View {
                 Text("Watch")
             }
             Section {
+                ForEach(Agent.allCases.filter(\.isRemote), id: \.self) { agent in
+                    ServerRow(agent: agent, state: sources[agent], changed: refresh)
+                }
+            } header: {
+                Text("Servers")
+            } footer: {
+                Text("Hermes and OpenCode run on a server, often another computer. Muster signs in to the one you add, "
+                     + "keeps its password in your Keychain and connects to nothing else. Answer their prompts here or in "
+                     + "the agent's own app: the first answer wins.")
+                    .foregroundStyle(.secondary)
+            }
+            Section {
                 ForEach([Agent.claude, Agent.codex], id: \.self) { agent in
                     Toggle(isOn: Binding(get: { answering[agent] ?? false }, set: { on in
                         do {
@@ -244,5 +256,84 @@ private struct SettingsView: View {
             try? enc.encode(Pricing.builtIn).write(to: file)
         }
         NSWorkspace.shared.activateFileViewerSelecting([file])
+    }
+}
+
+/// A server for an agent that runs elsewhere: where it is, and the password to sign in with.
+private struct ServerRow: View {
+    let agent: Agent
+    let state: SourceState?
+    let changed: () -> Void
+    @State private var editing = false
+    @State private var address = ""
+    @State private var username = ""
+    @State private var password = ""
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                if let icon = agent.icon { Image(nsImage: icon).resizable().frame(width: 22, height: 22) }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(agent.name)
+                    Text(summary).font(.caption).foregroundStyle(warning ? Color.orange : Color.secondary)
+                }
+                Spacer()
+                if !editing {
+                    if Remote.server(agent) != nil {
+                        Button("Remove") { Remote.forget(agent); changed() }
+                        Button("Edit…", action: begin)
+                    } else {
+                        Button("Add…", action: begin)
+                    }
+                }
+            }
+            if editing {
+                TextField("Address", text: $address, prompt: Text(agent == .hermes ? "https://dashboard-host" : "https://server-host:4096"))
+                if agent == .hermes { TextField("Username", text: $username) }
+                SecureField("Password", text: $password, prompt: Text(Remote.server(agent) == nil ? "" : "Unchanged"))
+                if let error { Text(error).font(.callout).foregroundStyle(.orange) }
+                HStack {
+                    Spacer()
+                    Button("Cancel") { editing = false; error = nil }
+                    Button("Save", action: save).keyboardShortcut(.defaultAction)
+                        .disabled(address.isEmpty || (password.isEmpty && Remote.server(agent) == nil))
+                }
+            }
+        }
+    }
+
+    private var summary: String {
+        guard let server = Remote.server(agent) else { return "Not added" }
+        let host = server.url.host ?? server.url.absoluteString
+        switch state {
+        case .ok(let n)?: return "\(host) · \(n) session\(n == 1 ? "" : "s") in the last 3 hours"
+        case .unreadable(let why)?: return "\(host) · \(why)"
+        default: return "\(host) · Connecting…"
+        }
+    }
+
+    private var warning: Bool {
+        if case .unreadable = state { return true }
+        return false
+    }
+
+    private func begin() {
+        let server = Remote.server(agent)
+        address = server?.url.absoluteString ?? ""
+        username = server?.username ?? ""
+        password = ""
+        error = nil
+        editing = true
+    }
+
+    private func save() {
+        do {
+            try Remote.save(agent, address: address, username: username, password: password)
+            editing = false
+            error = nil
+            password = ""
+            changed()
+        } catch { self.error = error.localizedDescription }
     }
 }

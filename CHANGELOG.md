@@ -2,6 +2,15 @@
 
 What changed in each release of Muster, newest first. The app shows the latest one after you update, and every release is also at [agentmuster.app/changelog](https://agentmuster.app/changelog).
 
+## 1.4.0 · Unreleased
+
+Hermes and OpenCode, from the server they run on.
+
+- <!-- server.rack --> **Hermes and OpenCode.** Add a Hermes gateway's dashboard or an `opencode serve` in Settings → Servers, and their sessions join the list, with tokens and cost.
+- <!-- checkmark.bubble --> **Answer them from Muster.** Approvals and questions from Hermes Desktop chats, and OpenCode's permission requests and questions, get the alert and its keys. Answer in Muster or in the agent's own app: the first answer wins.
+- <!-- message --> **Messaging chats show when they wait.** A Hermes chat from a messaging app that waits on an approval shows as needing you, and you answer it in the chat.
+- <!-- key --> **Passwords stay in the Keychain.** Muster signs in the way the agents' own apps do, and connects to nothing but the servers you add.
+
 ## 1.3.1 · 2026-10-13
 
 Clearer when Muster can't answer for you yet.

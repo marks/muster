@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>Never keep an agent waiting.</b><br>
-  A free, open-source Mac menu bar app for your Claude Code, Codex and Cursor sessions.
+  A free, open-source Mac menu bar app for your Claude Code, Codex, Cursor, Hermes and OpenCode sessions.
 </p>
 
 <p align="center">
@@ -118,8 +118,23 @@ Turn it on per agent in **Settings → Answer prompts from Muster**.
 | **Claude Code** | Permission requests, multiple-choice questions, plan approvals |
 | **Codex** | Approval requests (trust the hook once with `/hooks` in Codex) |
 | **Cursor** | Opens the prompt in Cursor |
+| **Hermes** | Approvals and single questions from Desktop chats; a messaging app's chat shows when it waits, and you answer in the chat |
+| **OpenCode** | Permission requests and single questions, from any session on the server, its subagents included |
 
-Muster adds one hook to the agent's own settings and removes exactly that when you turn it off. Beside the file it keeps `.muster-original`, the file as it was before Muster first changed it, and `.muster-backup`, the file before the latest change. A symlinked settings file stays a link, and a file Muster can't parse is left alone. Claude's native dialog stays live alongside Muster, and the first answer wins. If Muster isn't running, the agent asks as usual. Hooks talk to Muster on `127.0.0.1` with a per-install token.
+For Claude Code and Codex, Muster adds one hook to the agent's own settings and removes exactly that when you turn it off. Beside the file it keeps `.muster-original`, the file as it was before Muster first changed it, and `.muster-backup`, the file before the latest change. A symlinked settings file stays a link, and a file Muster can't parse is left alone. Claude's native dialog stays live alongside Muster, and the first answer wins. If Muster isn't running, the agent asks as usual. Hooks talk to Muster on `127.0.0.1` with a per-install token.
+
+## Agents on a server
+
+Hermes and OpenCode run on a server, often another computer, so there are no files on your Mac to read. Add the server in **Settings → Servers**, and Muster signs in to it the way the agent's own apps do:
+
+| | Server | Sign-in |
+|---|---|---|
+| **Hermes** | The gateway's dashboard, the address Hermes Desktop connects to | The dashboard's username and password |
+| **OpenCode** | An `opencode serve` (OpenCode 2), the address its web UI and `opencode --server` use | The server's password |
+
+Their sessions join the list with tokens and cost, and their prompts get the same alert and keys as the rest. You can answer in Muster or in the agent's own app: the first answer wins. <kbd>⇧</kbd><kbd>⌥</kbd><kbd>↩</kbd> allows a Hermes command for the rest of its session, and saves an "always" rule for an OpenCode permission, as OpenCode's own button does.
+
+Opening a Hermes session goes to Hermes Desktop; an OpenCode session opens in the server's web UI. Muster keeps each password in your Keychain, accepts plain `http` only for this Mac itself, and connects to nothing but the servers you add.
 
 ## Shortcuts
 
@@ -144,13 +159,15 @@ Claude Code can notify you on its own in some terminals, and a few lines of sett
 <summary><b>How it works</b></summary>
 <br>
 
-Muster reads the session files each app already writes. Nothing to configure.
+Muster reads the session files each app already writes. Nothing to configure, except a server for Hermes and OpenCode.
 
 | App | Read from |
 |---|---|
 | **Claude** (desktop, CLI, SSH sessions) | `~/.claude/projects` transcripts and Claude's session list |
 | **Codex** (app and CLI) | `~/.codex/state_*.sqlite` threads and rollout logs |
 | **Cursor** | The Agents window's chat list and agent transcripts |
+| **Hermes** | The dashboard's session list, and its live connection (`/api/ws`) for the chats it runs |
+| **OpenCode** | The server's session list, and its event stream (`/api/event`) |
 
 Everything is opened read-only. File system events trigger a rescan, at most once a second; transcripts are read incrementally, only the bytes added since the last look.
 
@@ -170,7 +187,7 @@ Use your own prices from **Settings → Use my own prices…**, which writes `~/
 <summary><b>Privacy</b></summary>
 <br>
 
-No accounts, no analytics. The only network request is the update check, which happens when you click Check for Updates or turn on the daily check, and asks GitHub for the latest release. The prompt server listens on `127.0.0.1` only and needs a token that lives in your user defaults and the agents' hook settings.
+No accounts, no analytics. Muster connects to the Hermes and OpenCode servers you add, and to nothing else but the update check, which happens when you click Check for Updates or turn on the daily check, and asks GitHub for the latest release. Server passwords are kept in your Keychain. The prompt server listens on `127.0.0.1` only and needs a token that lives in your user defaults and the agents' hook settings.
 
 </details>
 

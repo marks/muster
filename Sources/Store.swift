@@ -56,6 +56,7 @@ final class Store {
             return
         }
         watch()
+        Remote.shared.onChange = { [weak self] in self?.rescan() }
         timer = Timer.scheduledTimer(withTimeInterval: Self.tick, repeats: true) { [weak self] _ in self?.rescan() }
         rescan()
     }
@@ -82,12 +83,17 @@ final class Store {
         scanned = enabled
         let changed = changes
         changes = Changes()
+        // Servers' sessions are already in memory: their clients keep them current.
+        Remote.shared.watch(enabled)
+        let remote = enabled.filter(\.isRemote).flatMap { Remote.shared.sessions($0) }
+        var remoteSources: [Agent: SourceState] = [:]
+        for agent in Agent.allCases where agent.isRemote { remoteSources[agent] = Remote.shared.state(agent) }
         queue.async { [weak self] in
             guard let self else { return }
             let found: [Session] = autoreleasepool {
                 let now = Date()
                 let since = { (a: Agent) in fresh.contains(a) ? Changes.all : changed }
-                var all: [Session] = []
+                var all: [Session] = remote
                 if enabled.contains(.claude) { all += self.claude.scan(now: now, changes: since(.claude)) }
                 if enabled.contains(.codex) { all += self.codex.scan(now: now, changes: since(.codex)) }
                 if enabled.contains(.cursor) { all += self.cursor.scan(now: now, changes: since(.cursor)) }
@@ -99,7 +105,8 @@ final class Store {
                 }
             }
             if changed.full { malloc_zone_pressure_relief(nil, 0) }
-            let sources: [Agent: SourceState] = [.claude: self.claude.state, .codex: self.codex.state, .cursor: self.cursor.state]
+            let local: [Agent: SourceState] = [.claude: self.claude.state, .codex: self.codex.state, .cursor: self.cursor.state]
+            let sources = local.merging(remoteSources) { $1 }
             DispatchQueue.main.async {
                 self.pending = false
                 self.sources = sources
@@ -122,7 +129,10 @@ final class Store {
 
     private func publish(_ found: [Session]) {
         lastFound = found
-        if !Self.demo { Prompts.shared.resolve(with: found) }
+        if !Self.demo {
+            Prompts.shared.sync(remote: Remote.shared.prompts)
+            Prompts.shared.resolve(with: found)
+        }
         if firstRun {
             // Everything already finished before Muster was installed counts as read.
             firstRun = false
@@ -206,7 +216,7 @@ enum Opener {
         Store.shared.markOpened(s)
         Stats.record(.jumped)
         if E2E.on { E2E.opening = s }
-        if let host = ProcessHost.app(running: s), !s.agent.bundleIDs.contains(host.bundleIdentifier ?? "") {
+        if !s.agent.isRemote, let host = ProcessHost.app(running: s), !s.agent.bundleIDs.contains(host.bundleIdentifier ?? "") {
             host.activate()
             return
         }
@@ -220,6 +230,12 @@ enum Opener {
             if openURL("codex://threads/\(encode(s.sid))") { return }
         case .cursor:
             if openURL("cursor://anysphere.cursor-deeplink/agent?id=\(encode(s.sid))") { return }
+        case .hermes:
+            // Hermes Desktop shows any session its server stores, messaging chats included.
+            if openURL("hermes://open/\(encode(s.sid))") { return }
+        case .opencode:
+            // The server's own web UI; OpenCode's desktop app has no link into a server's session.
+            if openURL(s.appID) { return }
         }
         activate(s.agent)
     }

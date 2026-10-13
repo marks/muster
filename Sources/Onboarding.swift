@@ -135,7 +135,7 @@ final class OnboardingModel: ObservableObject {
     func installed(_ agent: Agent) -> Bool {
         switch sources[agent] {
         case .ok, .unreadable: return true
-        case .notInstalled, nil: return false
+        case .notInstalled, .noServer, nil: return false
         }
     }
 
@@ -347,13 +347,13 @@ private struct AgentsPage: View {
             Spacer(minLength: 24)
             Header(title: "Your agents", subtitle: "Muster reads the sessions they already save on this Mac, so there's nothing to connect.")
             Card {
-                ForEach(Array(Agent.allCases.enumerated()), id: \.element) { i, agent in
+                ForEach(Array(Agent.allCases.filter { !$0.isRemote }.enumerated()), id: \.element) { i, agent in
                     if i > 0 { Divider().padding(.leading, 62) }
                     AgentRow(agent: agent, state: model.sources[agent])
                 }
             }
             .frame(width: 440)
-            if Agent.allCases.allSatisfy({ !model.installed($0) }), !model.sources.isEmpty {
+            if Agent.allCases.allSatisfy({ $0.isRemote || !model.installed($0) }), !model.sources.isEmpty {
                 Text("None yet. Your sessions show up here as soon as you start one.")
                     .font(.callout).foregroundStyle(.secondary)
             }
@@ -389,6 +389,7 @@ private struct AgentRow: View {
         switch state {
         case nil: return "Looking…"
         case .notInstalled: return "Not on this Mac. Muster picks it up when you install it."
+        case .noServer: return "Add its server in Settings."
         case .ok, .unreadable: return state!.summary
         }
     }
@@ -399,7 +400,7 @@ private struct AgentRow: View {
         case .ok: Image(systemName: "checkmark.circle.fill").font(.system(size: 20)).foregroundStyle(.green)
                 .symbolEffect(.bounce, value: state)
         case .unreadable: Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 18)).foregroundStyle(.orange)
-        case .notInstalled: Text("Not found").font(.system(size: 12, weight: .medium)).foregroundStyle(.tertiary)
+        case .notInstalled, .noServer: Text("Not found").font(.system(size: 12, weight: .medium)).foregroundStyle(.tertiary)
         }
     }
 }

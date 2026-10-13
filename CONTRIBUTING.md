@@ -16,7 +16,8 @@ Thanks for helping. A few things keep Muster fast and trustworthy.
 
 - **Native first.** AppKit for anything on screen all day. SwiftUI is fine for
   windows that open occasionally, like Settings.
-- **Read-only, local only.** Muster makes no network requests besides the opt-in update check, and only writes
+- **Read-only, local only.** Muster makes no network requests besides the opt-in update check and the Hermes and
+  OpenCode servers you add, and only writes
   to another app's files when you turn on prompt answering, which edits that agent's
   hook settings with a backup.
 - **Cheap when idle.** No polling where a file system event will do. Views are
